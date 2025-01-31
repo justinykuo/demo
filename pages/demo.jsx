@@ -1,5 +1,16 @@
 import Head from "next/head";
-export default function Demo() {
+import events from '../data/events.json';
+import users from '../data/users.json';
+
+export async function getServerSideProps(context) {
+  return {
+    props: {
+
+    }
+  };
+}
+export default function Page() {
+  console.log(users);
   return (
     <>
       <Head>
@@ -10,6 +21,20 @@ export default function Demo() {
       </Head>
       <main>
         Hello!
+        <table>
+          <tbody>
+            {users.map((u) => {
+              console.log(u);
+              return (
+                <tr>
+                  <td>{u.distinct_ids}</td>
+                  <td>{JSON.stringify(u.properties)}</td>
+                  <td>{u.user_id}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </main>
       <style jsx>{`
 
