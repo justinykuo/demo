@@ -11,22 +11,21 @@ export async function getServerSideProps(context) {
   };
 }
 export default function Page() {
-  // Using a Map to de-dupe
-  const uniqueEvents = new Map();
+  // Use a Set to track unique `distinct_id + timestamp` combinations
+  const seen = new Set();
+  const uniqueEvents = [];
 
-  events.forEach((event) => {
-    const key = `${event.distinct_id}-${event.event}`;
-
-    if (!uniqueEvents.has(key) || new Date(event.timestamp) > new Date(uniqueEvents.get(key).timestamp)) {
-      uniqueEvents.set(key, event);
+  events.forEach(event => {
+    const uniqueKey = `${event.event}-${event.distinct_id}-${event.timestamp}`;
+    if (!seen.has(uniqueKey)) {
+      seen.add(uniqueKey);
+      uniqueEvents.push(event);
     }
   });
 
-  const deduplicatedEvents = Array.from(uniqueEvents.values());
-
   const columns = [
-    { field: 'event', headerName: 'Event', width: 200 },
     { field: 'distinct_id', headerName: 'Distinct IDs', width: 330 },
+    { field: 'event', headerName: 'Event', width: 200 },
     { field: 'timestamp', headerName: 'Timestamp', width: 330 },
     {
       field: 'properties',
@@ -35,12 +34,12 @@ export default function Page() {
       sortable: false,
       width: 560,
       valueGetter: (value, row) => {
-        console.log(row);
         return `${JSON.stringify(row.properties)}`
       },
     },
   ];
 
+  const paginationModel = { page: 0, pageSize: 50 };
   return (
     <>
       <Head>
@@ -52,11 +51,14 @@ export default function Page() {
       <main>
       <Paper sx={{ height: 800, width: '100%' }}>
         <DataGrid
-          getRowId={(row) => row.distinct_id}
-          rows={deduplicatedEvents}
+          getRowId={(row) => `${row.event}-${row.distinct_id}-${row.timestamp}`}
+          rows={uniqueEvents.slice(0, 10)}
           columns={columns}
           checkboxSelection
+          disableMultipleRowSelection
           sx={{ border: 0 }}
+          initialState={{ pagination: { paginationModel } }}
+          pageSizeOptions={[50, 100]}
         />
       </Paper>
       </main>
