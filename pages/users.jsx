@@ -2,6 +2,7 @@ import Head from "next/head";
 import users from '../data/users.json';
 import { DataGrid } from '@mui/x-data-grid';
 import Paper from '@mui/material/Paper';
+import { useState, useEffect } from "react";
 
 export async function getServerSideProps(context) {
   return {
@@ -11,16 +12,40 @@ export async function getServerSideProps(context) {
   };
 }
 export default function Page() {
-  function createData({ user_id, distinct_ids, properties }) {
-    return {
-      userId: user_id,
-      distinctIds: distinct_ids,
-      properties: JSON.stringify(properties)
-    }
-  }
+  const [selectedUser, setSelectedUser] = useState();
+  const [userEvents, setUserEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/user/events?user_id=${selectedUser}`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+
+        const data = await response.json();
+        console.log(data);
+        setUserEvents(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+      if (selectedUser) {
+        fetchEvents();
+      }
+  }, [selectedUser]);
 
   const columns = [
-    { field: 'user_id', headerName: 'User ID', width: 70 },
+    { field: 'user_id', headerName: 'User ID', width: 250 },
     { field: 'distinct_ids', headerName: 'Distinct IDs', width: 330 },
     {
       field: 'properties',
@@ -28,11 +53,11 @@ export default function Page() {
       description: 'This column has a value getter and is not sortable.',
       sortable: false,
       width: 560,
-      valueGetter: (value, row) => `${JSON.stringify(row)}`,
+      valueGetter: (value, row) => `${JSON.stringify(row.properties)}`,
     },
   ];
 
-  const paginationModel = { page: 0, pageSize: 100 };
+  const paginationModel = { page: 0, pageSize: 50 };
   return (
     <>
       <Head>
@@ -48,9 +73,25 @@ export default function Page() {
           rows={users}
           columns={columns}
           checkboxSelection
+          disableMultipleRowSelection
           sx={{ border: 0 }}
+          initialState={{ pagination: { paginationModel } }}
+          pageSizeOptions={[50, 100]}
+          onRowSelectionModelChange={(id) => {
+            setSelectedUser(id);
+          }}
         />
       </Paper>
+      {loading && (
+        <p>Loading events...</p>
+      )}
+      {error && (
+        <p>Error: {error}</p>
+      )}
+      <div>{selectedUser}</div>
+      <div>{userEvents.map((e) =>
+        <>{JSON.stringify(e)}</>
+      )}</div>
       </main>
       <style jsx>{`
 
