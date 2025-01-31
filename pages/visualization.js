@@ -15,7 +15,7 @@ export default function Page() {
       </div>
       <style jsx>{`
         div {
-          padding: 80px 12px;
+          padding: 40px 12px;
         }
     `}</style>
     </div>
