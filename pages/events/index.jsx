@@ -1,7 +1,7 @@
 import Head from "next/head";
-import users from '../data/users.json';
+import events from '../../data/events.json';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import Paper from '@mui/material/Paper';
+import { Button, Paper } from '@mui/material';
 import { useState, useEffect } from "react";
 
 export async function getServerSideProps(context) {
@@ -12,25 +12,26 @@ export async function getServerSideProps(context) {
   };
 }
 export default function Page() {
-  const [selectedUser, setSelectedUser] = useState();
-  const [userEvents, setUserEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(false);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchUser = async () => {
       try {
         setLoading(true);
         setError(null);
+        let id = selectedEvent[0].substring(0, selectedEvent[0].indexOf('/'));
 
-        const response = await fetch(`/api/user/events?user_id=${selectedUser}`);
+        const response = await fetch(`/api/user/${id}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch events");
         }
 
         const data = await response.json();
-        setUserEvents(data);
+        setUser(data);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -38,21 +39,36 @@ export default function Page() {
       }
     };
 
-      if (selectedUser) {
-        fetchEvents();
+      if (selectedEvent) {
+        fetchUser();
       }
-  }, [selectedUser]);
+  }, [selectedEvent]);
+
+  // Use a Set to get unique events
+  const seen = new Set();
+  const uniqueEvents = [];
+
+  events.forEach(event => {
+    const uniqueKey = `${event.event}-${event.distinct_id}-${event.timestamp}`;
+    if (!seen.has(uniqueKey)) {
+      seen.add(uniqueKey);
+      uniqueEvents.push(event);
+    }
+  });
 
   const columns = [
-    { field: 'user_id', headerName: 'User ID', width: 250 },
-    { field: 'distinct_ids', headerName: 'Distinct IDs', width: 330 },
+    { field: 'event', headerName: 'Event', width: 200 },
+    { field: 'distinct_id', headerName: 'Distinct IDs', width: 330 },
+    { field: 'timestamp', headerName: 'Timestamp', width: 330 },
     {
       field: 'properties',
       headerName: 'Properties',
       description: 'This column has a value getter and is not sortable.',
       sortable: false,
       width: 560,
-      valueGetter: (value, row) => `${JSON.stringify(row.properties)}`,
+      valueGetter: (value, row) => {
+        return `${JSON.stringify(row.properties)}`
+      },
     },
   ];
 
@@ -69,8 +85,8 @@ export default function Page() {
       <Paper sx={{ height: 600, width: '100%' }}>
         <DataGrid
           slots={{ toolbar: GridToolbar }}
-          getRowId={(row) => row.user_id}
-          rows={users}
+          getRowId={(row) => `${row.distinct_id}/${row.event}/${row.timestamp}`}
+          rows={uniqueEvents}
           columns={columns}
           checkboxSelection
           disableMultipleRowSelection
@@ -78,7 +94,7 @@ export default function Page() {
           initialState={{ pagination: { paginationModel } }}
           pageSizeOptions={[50, 100]}
           onRowSelectionModelChange={(id) => {
-            setSelectedUser(id);
+            setSelectedEvent(id);
           }}
         />
       </Paper>
@@ -88,22 +104,9 @@ export default function Page() {
       {error && (
         <p>Error: {error}</p>
       )}
-      {selectedUser && (
+      {user && (
           <>
-            <h3>Events for User ID: {selectedUser}</h3>
-            <div>
-              {userEvents.length > 0 ? (
-                <ul>
-                  {userEvents.map((event, index) => (
-                    <li key={index}>
-                      <strong>{event.event}</strong> at {event.timestamp} from {event.properties.country}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No events found for this user.</p>
-              )}
-            </div>
+            <h4>User for selected event: {JSON.stringify(user)}</h4>
           </>
         )}
       </main>
